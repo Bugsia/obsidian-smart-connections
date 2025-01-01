@@ -48,6 +48,39 @@ export async function render(obsidian_view, opts = {}) {
   return await post_process.call(this, obsidian_view, frag, opts);
 }
 
+async function save_file_in_attachment_folder(obsidian_view, file, thread) {
+  const fs = require('fs');
+  const path = require('path');
+  const conversationName = thread.key;
+  const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
+  const folderPath = `.smart-env/smart-attachments/${conversationName}`;
+  const fullPath = path.join(vaultPath, folderPath);
+  const fileName = file.name;
+  const filePath = `${folderPath}/${fileName}`.replace(/[\/\\]/g, '/'); // Replace slashes with forward slashes
+
+  console.log(`Uploading file "${file.name}" to "${fullPath}"`);
+
+  if(!fs.existsSync(fullPath)) {
+    fs.mkdirSync(fullPath, { recursive: true });
+    console.log(`Folder created at "${fullPath}"`);
+  }
+
+  const fileReader = new FileReader();
+  fileReader.onload = async () => {
+    try {
+      const fileData = fileReader.result;
+
+      await obsidian_view.app.vault.createBinary(filePath, new Uint8Array(fileData));
+      console.log(`File created at "${filePath}"`);
+    }
+    catch (error) {
+      console.error(`Error creating file at "${filePath}":`, error);
+    }
+  };
+
+  fileReader.readAsArrayBuffer(file);
+}
+
 /**
  * Post-processes the rendered chat interface
  * @async
@@ -91,52 +124,7 @@ export async function post_process(obsidian_view, frag, opts) {
     });
   }
 
-  // Add upload button handler
-  const upload_button = frag.querySelector('.upload-button');
-  if(upload_button) {
-    upload_button.addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.click();
-      input.addEventListener('change', async (e) => {
-        const fs = require('fs');
-        const path = require('path');
-
-        const file = e.target.files[0];
-        if (file) {
-          const conversationName = thread.key;
-          const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
-          const folderPath = `.smart-env/smart-attachments/${conversationName}`;
-          const fullPath = path.join(vaultPath, folderPath);
-          const fileName = file.name;
-          const filePath = `${folderPath}/${fileName}`.replace(/[\/\\]/g, '/'); // Replace slashes with forward slashes
-
-          console.log(`Uploading file "${file.name}" to "${fullPath}"`);
-
-          if(!fs.existsSync(fullPath)) {
-            fs.mkdirSync(fullPath, { recursive: true });
-            console.log(`Folder created at "${fullPath}"`);
-          }
-
-          const fileReader = new FileReader();
-          fileReader.onload = async () => {
-            try {
-              const fileData = fileReader.result;
-
-              await obsidian_view.app.vault.createBinary(filePath, new Uint8Array(fileData));
-              console.log(`File created at "${filePath}"`);
-            }
-            catch (error) {
-              console.error(`Error creating file at "${filePath}":`, error);
-            }
-          };
-
-          fileReader.readAsArrayBuffer(file);
-        }
-      });
-    });
-  }
+  setup_upload_button_handler.call(this, obsidian_view, frag, thread);
 
   // Add close button handler
   const close_button = overlay_container.querySelector(".smart-chat-overlay-close");
@@ -154,7 +142,7 @@ export async function post_process(obsidian_view, frag, opts) {
       overlay_container.style.display = 'none';
     }
   });
-
+  
   // New chat button
   const new_chat_button = frag.querySelector('button[title="New Chat"]');
   new_chat_button.addEventListener('click', async () => {
@@ -171,16 +159,76 @@ export async function post_process(obsidian_view, frag, opts) {
   });
   
   // Setup chat name input handler
-  setup_chat_name_input_handler.call(this, frag, thread);
+  setup_chat_name_input_handler.call(this, obsidian_view, frag, thread);
   
   return frag;
+}
+
+function setup_upload_button_handler(obsidian_view, frag, thread) {
+  const chat_input = frag.querySelector('.sc-chat-form textarea');
+
+  // Add upload button handler
+  const upload_button = frag.querySelector('.upload-button');
+  if(upload_button) {
+    upload_button.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.click();
+      input.addEventListener('change', async (e) => {
+        for (let i = 0; i < e.target.files.length; i++) {
+          const file = e.target.files[i];
+          if (file) {
+            await save_file_in_attachment_folder(obsidian_view, file, thread);
+          }
+        }
+      });
+    });
+  }
+
+  // Add handle for pasting images
+  chat_input.addEventListener('paste', async (event) => {
+    const items = event.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          await save_file_in_attachment_folder(obsidian_view, file, thread);
+        }
+      }
+    }
+  });
+}
+
+function rename_attachments_folder(obsidian_view, oldName, newName) {
+  const vault = obsidian_view.app.vault;
+
+  const fs = require('fs');
+  const path = require('path');
+
+  const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
+  const oldFullPath = path.join(vaultPath, `.smart-env/smart-attachments/${oldName}`);
+  const newFullPath = path.join(vaultPath, `.smart-env/smart-attachments/${newName}`);
+
+  if(!fs.existsSync(oldFullPath)) {
+    console.error(`Folder does not exist: ${oldFullPath}`);
+  }
+
+  try {
+    fs.renameSync(oldFullPath, newFullPath);
+  }
+  catch (error) {
+    console.error(`Error renaming folder "${oldFullPath}":`, error);
+  }
 }
 
 /**
  * Sets up the chat name input change handler
  * @private
  */
-function setup_chat_name_input_handler(frag, thread) {
+function setup_chat_name_input_handler(obsidian_view, frag, thread) {
   const name_input = frag.querySelector('.sc-chat-name-input');
   if (!name_input) return;
 
@@ -193,8 +241,11 @@ function setup_chat_name_input_handler(frag, thread) {
     const new_name = name_input.value.trim();
     if (new_name && new_name !== thread.key) {
       try {
+        const oldName =thread.key;
         await thread.rename(new_name);
         console.log(`Thread renamed to "${new_name}"`);
+        rename_attachments_folder(obsidian_view, oldName, new_name);
+        console.log(`Attachments folder renamed from "${oldName}" to "${new_name}"`);
       } catch (error) {
         console.error("Error renaming thread:", error);
         // revert the name in the input field
