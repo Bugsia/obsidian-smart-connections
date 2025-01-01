@@ -277,22 +277,26 @@
         max-height: 100%;
         background-color: var(--background-primary);
         color: var(--text-normal);
-        margin-right: -2.7rem;
-        padding-right: 3rem;
+        margin-right: -4.7rem;
+        padding-right: 6rem;
       }
 
       .sc-btn-container {
-        width: 2rem;
+        width: 4rem;
         height: 2rem;
         margin: auto;
+        display: flex; /* So buttons are next to each other */
+        align-items: center;
 
-        > button.send-button {
+        > button.send-button,
+        > button.upload-button {
           border-radius: 99999px;
           cursor: pointer;
           outline: 2px solid transparent;
           padding: 0;
           outline-offset: 2px;
           background: none !important;
+          margin-right: 8px;
 
           &:focus-visible {
             outline-color: var(--text-faint);
