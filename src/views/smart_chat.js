@@ -91,6 +91,53 @@ export async function post_process(obsidian_view, frag, opts) {
     });
   }
 
+  // Add upload button handler
+  const upload_button = frag.querySelector('.upload-button');
+  if(upload_button) {
+    upload_button.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.click();
+      input.addEventListener('change', async (e) => {
+        const fs = require('fs');
+        const path = require('path');
+
+        const file = e.target.files[0];
+        if (file) {
+          const conversationName = thread.key;
+          const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
+          const folderPath = `.smart-env/smart-attachments/${conversationName}`;
+          const fullPath = path.join(vaultPath, folderPath);
+          const fileName = file.name;
+          const filePath = `${folderPath}/${fileName}`.replace(/[\/\\]/g, '/'); // Replace slashes with forward slashes
+
+          console.log(`Uploading file "${file.name}" to "${fullPath}"`);
+
+          if(!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
+            console.log(`Folder created at "${fullPath}"`);
+          }
+
+          const fileReader = new FileReader();
+          fileReader.onload = async () => {
+            try {
+              const fileData = fileReader.result;
+
+              await obsidian_view.app.vault.createBinary(filePath, new Uint8Array(fileData));
+              console.log(`File created at "${filePath}"`);
+            }
+            catch (error) {
+              console.error(`Error creating file at "${filePath}":`, error);
+            }
+          };
+
+          fileReader.readAsArrayBuffer(file);
+        }
+      });
+    });
+  }
+
   // Add close button handler
   const close_button = overlay_container.querySelector(".smart-chat-overlay-close");
   if (close_button) {
