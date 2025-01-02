@@ -53,7 +53,7 @@ async function save_file_in_attachment_folder(obsidian_view, file, thread) {
   const path = require('path');
   const conversationName = thread.key;
   const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
-  const folderPath = `.smart-env/smart-attachments/${conversationName}`;
+  const folderPath = `.smart-env/smart_attachments/${conversationName}`;
   const fullPath = path.join(vaultPath, folderPath);
   const fileName = file.name;
   const filePath = `${folderPath}/${fileName}`.replace(/[\/\\]/g, '/'); // Replace slashes with forward slashes
@@ -160,7 +160,7 @@ export async function post_process(obsidian_view, frag, opts) {
   
   // Setup chat name input handler
   setup_chat_name_input_handler.call(this, obsidian_view, frag, thread);
-  
+
   return frag;
 }
 
@@ -181,6 +181,8 @@ function setup_upload_button_handler(obsidian_view, frag, thread) {
           const file = e.target.files[i];
           if (file) {
             await save_file_in_attachment_folder(obsidian_view, file, thread);
+            const file_path = `.smart-env/smart_attachments/${thread.key}/${file.name}`;
+            obsidian_view.insert_selection(`[[${file_path}]]`);
           }
         }
       });
@@ -196,6 +198,8 @@ function setup_upload_button_handler(obsidian_view, frag, thread) {
         const file = item.getAsFile();
         if (file) {
           await save_file_in_attachment_folder(obsidian_view, file, thread);
+          const file_path = `.smart-env/smart_attachments/${thread.key}/${file.name}`;
+          obsidian_view.insert_selection(`[[${file_path}]]`);
         }
       }
     }
@@ -209,8 +213,8 @@ function rename_attachments_folder(obsidian_view, oldName, newName) {
   const path = require('path');
 
   const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
-  const oldFullPath = path.join(vaultPath, `.smart-env/smart-attachments/${oldName}`);
-  const newFullPath = path.join(vaultPath, `.smart-env/smart-attachments/${newName}`);
+  const oldFullPath = path.join(vaultPath, `.smart-env/smart_attachments/${oldName}`);
+  const newFullPath = path.join(vaultPath, `.smart-env/smart_attachments/${newName}`);
 
   if(!fs.existsSync(oldFullPath)) {
     console.error(`Folder does not exist: ${oldFullPath}`);
@@ -246,6 +250,7 @@ function setup_chat_name_input_handler(obsidian_view, frag, thread) {
         console.log(`Thread renamed to "${new_name}"`);
         rename_attachments_folder(obsidian_view, oldName, new_name);
         console.log(`Attachments folder renamed from "${oldName}" to "${new_name}"`);
+        obsidian_view.open_thread(new_name); // Hack, beacuse after renamin upload button event doesnt trigger till chat reloading
       } catch (error) {
         console.error("Error renaming thread:", error);
         // revert the name in the input field
