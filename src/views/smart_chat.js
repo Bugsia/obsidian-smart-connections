@@ -53,7 +53,7 @@ async function save_file_in_attachment_folder(obsidian_view, file, thread) {
   const path = require('path');
   const conversationName = thread.key;
   const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
-  const folderPath = `.smart-env/smart_attachments/${conversationName}`;
+  const folderPath = `smart_chats/smart_attachments/${conversationName}`;
   const fullPath = path.join(vaultPath, folderPath);
   const fileName = file.name;
   const filePath = `${folderPath}/${fileName}`.replace(/[\/\\]/g, '/'); // Replace slashes with forward slashes
@@ -181,7 +181,7 @@ function setup_upload_button_handler(obsidian_view, frag, thread) {
           const file = e.target.files[i];
           if (file) {
             await save_file_in_attachment_folder(obsidian_view, file, thread);
-            const file_path = `.smart-env/smart_attachments/${thread.key}/${file.name}`;
+            const file_path = `smart_chats/smart_attachments/${thread.key}/${file.name}`;
             obsidian_view.insert_selection(`[[${file_path}]]`);
           }
         }
@@ -198,7 +198,7 @@ function setup_upload_button_handler(obsidian_view, frag, thread) {
         const file = item.getAsFile();
         if (file) {
           await save_file_in_attachment_folder(obsidian_view, file, thread);
-          const file_path = `.smart-env/smart_attachments/${thread.key}/${file.name}`;
+          const file_path = `smart_chats/smart_attachments/${thread.key}/${file.name}`;
           obsidian_view.insert_selection(`[[${file_path}]]`);
         }
       }
@@ -213,8 +213,8 @@ function rename_attachments_folder(obsidian_view, oldName, newName) {
   const path = require('path');
 
   const vaultPath = obsidian_view.app.vault.adapter.getBasePath();
-  const oldFullPath = path.join(vaultPath, `.smart-env/smart_attachments/${oldName}`);
-  const newFullPath = path.join(vaultPath, `.smart-env/smart_attachments/${newName}`);
+  const oldFullPath = path.join(vaultPath, `smart_chats/smart_attachments/${oldName}`);
+  const newFullPath = path.join(vaultPath, `smart_chats/smart_attachments/${newName}`);
 
   if(!fs.existsSync(oldFullPath)) {
     console.error(`Folder does not exist: ${oldFullPath}`);
