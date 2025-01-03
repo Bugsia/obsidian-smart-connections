@@ -13,8 +13,8 @@ export class SmartNotices {
     id = this.normalize(id); // remove special characters
     if(typeof opts.timeout === 'undefined') opts.timeout = 5000; // default timeout
     // if notice is muted, return
-    if (this.settings?.muted?.[id]) {
-      // console.log("Notice is muted");
+    if (this.settings?.muted?.[id] || this.settings?.muted?.["mute all"]) {
+      console.log("Notice is muted");
       if(opts.confirm && typeof opts.confirm.callback === 'function') opts.confirm.callback.call(); // if confirm callback, run it
       return;
     }
@@ -48,6 +48,7 @@ export class SmartNotices {
     if(opts.confirm) this.add_btn(opts.confirm, actions);
     if(opts.button) this.add_btn(opts.button, actions);
     if(!opts.immutable) this.add_mute_btn(id, actions);
+    this.add_mute_all_btm(id, actions);
     return frag;
   }
   add_btn(button, container) {
@@ -59,6 +60,18 @@ export class SmartNotices {
         e.stopPropagation();
       }
       button.callback();
+    });
+    container.appendChild(btn);
+  }
+  add_mute_all_btm(id, container) {
+    id = this.normalize(id);
+    const btn = document.createElement("button");
+    setIcon(btn, "bell-slash");
+    // btn.innerHTML = "Mute All";
+    btn.addEventListener("click", () => {
+      if(!this.settings.muted) this.settings.muted = {};
+      this.settings.muted["mute all"] = true;
+      this.show("All notices muted", "All notices muted", { timeout: 2000 });
     });
     container.appendChild(btn);
   }
